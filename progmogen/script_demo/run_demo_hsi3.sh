@@ -53,7 +53,7 @@ python3 -m visualize.render_mesh_each --input_path "${save_fig_dir}/gen.npy" --s
 ###############################################################################
 
 # absolute path to this project
-project_dir="/path/to/ProgMoGen"
+project_dir="/home2/malijuan/project/ProgMoGen"
 # absolute path to blender app
 blender_app="/path/to/blender-2.93.0/blender"
 

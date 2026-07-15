@@ -1,2 +1,16 @@
 .vscode/
 **/.DS_Store
+__MACOSX/
+
+# Large experiment artifacts / pretrained weights
+progmogen/save/
+progmogen/result/
+progmogen/glove/
+progmogen/dataset/
+progmogen/body_models/
+
+# Local papers / binary blobs
+*.pdf
+*.pt
+*.zip
+*.npy

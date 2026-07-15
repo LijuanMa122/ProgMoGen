@@ -22,7 +22,7 @@ from data_loaders.humanml_utils import get_inpainting_mask
 
 from diffusion import logger
 from utils import dist_util
-from data_loaders.get_data import get_dataset_loader
+from data_loaders.get_data import get_dataset_loader, pad_or_trim_to_batch_size
 from model.cfg_sampler import wrap_model
 
 import os,sys 
@@ -343,7 +343,9 @@ def get_gen_motion(args, model, dataloader, num_samples_limit, scale, init_motio
 
             if num_samples_limit is not None and len(generated_motion) >= real_num_batches:
                 break
-            
+
+            # Small splits (e.g. test_plane_v0_id) can be < batch_size after filtering.
+            motion, model_kwargs = pad_or_trim_to_batch_size(motion, model_kwargs, dataloader.batch_size)
 
             # eval_task="geo1"
             # eval_task="hoi1"
@@ -841,9 +843,16 @@ if __name__ == '__main__':
     logger.log("creating data loader...")
     split = args.text_split
 
-    gt_loader = get_dataset_loader(name=args.dataset, batch_size=args.batch_size, num_frames=None, split=split, load_mode='gt')
-    gen_loader = get_dataset_loader(name=args.dataset, batch_size=args.batch_size, num_frames=None, split=split, load_mode='eval')
+    # drop_last=False: test_plane_v0_id has <32 usable motions after length filtering.
+    gt_loader = get_dataset_loader(name=args.dataset, batch_size=args.batch_size, num_frames=None, split=split, load_mode='gt', drop_last=False)
+    gen_loader = get_dataset_loader(name=args.dataset, batch_size=args.batch_size, num_frames=None, split=split, load_mode='eval', drop_last=False)
     num_actions = gen_loader.dataset.num_actions
+    print(f'dataset split={split}, len={len(gen_loader.dataset)}, n_batches={len(gen_loader)}')
+    if len(gen_loader) == 0:
+        raise RuntimeError(
+            f'Empty dataloader for split={split} (dataset len={len(gen_loader.dataset)}). '
+            'Check HumanML3D motion files under dataset/HumanML3D/new_joint_vecs.'
+        )
 
 
 

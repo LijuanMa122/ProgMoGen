@@ -242,15 +242,15 @@ def calc_RT_between_goals(target_gt_list_relax, target_gt_list):
     x2_gt = target_gt_list[1][0]
     z2_gt = target_gt_list[1][2]
 
-    A_mat = [[x1, -z1, 1, 0],
-         [z1,  x1, 0, 1],
-         [x2, -z2, 1, 0],
-         [z2,  x2, 0, 1]]
-    b_mat = [x1_gt, z1_gt, x2_gt, z2_gt]
-    A_mat = th.FloatTensor(A_mat).reshape(4,4)
-    b_mat = th.FloatTensor(b_mat).reshape(4,1)
-    sol   = th.linalg.solve(A_mat, b_mat)
-    a,b,c,d = sol.reshape(-1)
+    # PyTorch 1.7 has no torch.linalg.solve; use numpy on CPU.
+    A_mat = np.array([[float(x1), -float(z1), 1.0, 0.0],
+                      [float(z1),  float(x1), 0.0, 1.0],
+                      [float(x2), -float(z2), 1.0, 0.0],
+                      [float(z2),  float(x2), 0.0, 1.0]], dtype=np.float32)
+    b_mat = np.array([float(x1_gt), float(z1_gt), float(x2_gt), float(z2_gt)],
+                     dtype=np.float32).reshape(4, 1)
+    sol = np.linalg.solve(A_mat, b_mat).reshape(-1)
+    a, b, c, d = [float(x) for x in sol]
 
     R = th.zeros((3,3))
     translation = th.zeros((3,1))

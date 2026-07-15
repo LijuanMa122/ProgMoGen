@@ -1,3 +1,4 @@
+import torch
 from torch.utils.data import DataLoader
 
 from data_loaders.amass.sampling import FrameSampler
@@ -74,7 +75,7 @@ def get_dataset(name, num_frames, split='train', load_mode='train', batch_size=N
     return dataset
 
 
-def get_dataset_loader(name, batch_size, num_frames, split='train', load_mode='train', opt=None, short_db=False, cropping_sampler=False, size=None):
+def get_dataset_loader(name, batch_size, num_frames, split='train', load_mode='train', opt=None, short_db=False, cropping_sampler=False, size=None, drop_last=True):
     if load_mode == 'text_only':
         load_mode = 'train'
     dataset = get_dataset(name, num_frames, split, load_mode, batch_size, opt, short_db, cropping_sampler, size)
@@ -83,7 +84,32 @@ def get_dataset_loader(name, batch_size, num_frames, split='train', load_mode='t
     n_workers = 1 if load_mode in ['movement_train', 'evaluator_train'] else 8
     loader = DataLoader(
         dataset, batch_size=batch_size, shuffle=True,
-        num_workers=n_workers, drop_last=True, collate_fn=collate
+        num_workers=n_workers, drop_last=drop_last, collate_fn=collate
     )
 
     return loader
+
+
+def pad_or_trim_to_batch_size(motion, model_kwargs, batch_size):
+    """Ensure batch has exactly batch_size samples (needed when split < batch_size)."""
+    n = motion.shape[0]
+    if n == 0:
+        raise RuntimeError('Empty motion batch from dataloader; check text_split / HumanML3D files.')
+    if n == batch_size:
+        return motion, model_kwargs
+
+    if n > batch_size:
+        idx = list(range(batch_size))
+    else:
+        idx = (list(range(n)) * ((batch_size + n - 1) // n))[:batch_size]
+
+    motion = motion[idx]
+    y = {}
+    for k, v in model_kwargs['y'].items():
+        if torch.is_tensor(v):
+            y[k] = v[idx]
+        elif isinstance(v, (list, tuple)):
+            y[k] = [v[i] for i in idx]
+        else:
+            y[k] = v
+    return motion, {'y': y}

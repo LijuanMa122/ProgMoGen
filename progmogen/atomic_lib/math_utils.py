@@ -171,8 +171,14 @@ def fit_3d_line(data):
     th = torch
     datamean = data.mean(dim=0) 
     # Do an SVD on the mean-centered data.
-    uu, dd, vv = th.linalg.svd(data - datamean)
-    vec_d = vv[0]
+    # PyTorch 1.7 has no torch.linalg.svd; torch.svd returns V (columns = singular vectors).
+    # torch.linalg.svd returns Vh (rows = singular vectors), so indexing differs.
+    if hasattr(th.linalg, "svd"):
+        uu, dd, vv = th.linalg.svd(data - datamean)
+        vec_d = vv[0]
+    else:
+        uu, dd, vv = th.svd(data - datamean)
+        vec_d = vv[:, 0]
     assert np.allclose(th.norm(vec_d).item(),1.0,atol=1e-4)
     # print(datamean.shape, vec_d.shape)
     line_params = th.cat([datamean, vec_d], 0).reshape(1,-1)
@@ -223,21 +229,19 @@ def fit_yPlane(joint_pos):
     so that min |F_line(joint_pos)-0|
     '''
     th = torch
-    # b=[x_i,...]^T
-    # A=[[z_i, 1], ...]^T
-    b = joint_pos[:,0:1]
-    A = th.cat([ joint_pos[:,2:3], th.ones_like(b) ], 1)
-    A_pinv = th.inverse(th.matmul(A.t(),A))
-    # btA = th.matmul(b.t(), A)
-    btA = th.matmul(A.t(), b)
-    # (c,d)
-    x_res = -th.matmul(A_pinv, btA)
-    x_res = x_res.reshape(-1)
-    plane_params = th.zeros(1,4).to(x_res.device)
-    plane_params[0,0]=1.0 
-    plane_params[0,1]=0.0
-    plane_params[0,2]=x_res[0]
-    plane_params[0,3]=x_res[1]
+    # Solve tiny 2x2 LS with numpy on CPU to avoid GPU cuSOLVER
+    # (cusolverDnCreate error 7 under multi-process GPU load).
+    device = joint_pos.device
+    dtype = joint_pos.dtype
+    jp = joint_pos.detach().float().cpu().numpy()
+    b = jp[:, 0:1]
+    A = np.concatenate([jp[:, 2:3], np.ones_like(b)], axis=1)
+    x_res = -np.linalg.solve(A.T @ A, A.T @ b).reshape(-1)
+    plane_params = th.zeros(1, 4, dtype=dtype, device=device)
+    plane_params[0, 0] = 1.0
+    plane_params[0, 1] = 0.0
+    plane_params[0, 2] = float(x_res[0])
+    plane_params[0, 3] = float(x_res[1])
     return plane_params
 
 
