@@ -708,7 +708,41 @@ seed_policy: same_as_progmogen  # np_seed 与脚本一致
 
 ---
 
-## 11. 总结
+## 11. 仓库骨架（已落地）
+
+已在仓库中搭好可运行骨架（逻辑按本文第 3 节），目录：
+
+```
+progmogen/mic/                          # Eq.9–13 核心
+progmogen/diffusion/ddim_mic.py         # 标准任务 MIC
+progmogen/diffusion/ddim_relax_mic.py   # GEO/HOI MIC
+progmogen/task_configs_mic/             # HSI-1/2/3, GEO-1, HOI-1
+progmogen/tasks/eval_task_mic.py
+progmogen/tasks/eval_task_hsi1_mic.py
+progmogen/tasks/eval_task_goal_relaxed_mic.py
+progmogen/script_eval/eval_task_*_mic.sh
+progmogen/script_eval/eval_all_mic.sh
+progmogen/eval/main_eval_*_mic.py       # + unsuccess_rate
+```
+
+各任务脚本（在 `progmogen/` 下，conda env `mdm`）：
+
+```bash
+cd progmogen
+sh script_eval/eval_task_hsi1_mic.sh          # known, 512 samples
+sh script_eval/eval_task_hsi2_mic.sh
+sh script_eval/eval_task_hsi3_mic.sh
+sh script_eval/eval_task_geo1_relax_mic.sh
+sh script_eval/eval_task_hoi1_relax_mic.sh
+# 或一次跑全部：
+sh script_eval/eval_all_mic.sh
+```
+
+骨架已接通：warm-start → 逐步 Eq.9/10 → Eq.11 → Eq.13 → `condition_score` 注入。后续需按实验细调 `γ/λ/W_max`、criterion 的 Tweedie 扰动定义、以及 MuJoCo Pass。
+
+---
+
+## 12. 总结
 
 复现 MIC = 在 ProgMoGen 的 **同一 MDM+DDIM+任务定义** 上，把约束执行机制从：
 

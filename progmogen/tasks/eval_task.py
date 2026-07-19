@@ -160,14 +160,15 @@ def evaluate_matching_score_my(eval_wrapper, gen_loader):
 
 
 def renorm(data, dataset):
-    # gen_loader.dataset.mean_for_eval
-    # motion_gt =  torch.Size([32, 196, 263]) 
-    mean = gen_loader.dataset.mean[None,None,:]
-    std  = gen_loader.dataset.std[None,None,:]
-    mean_for_eval = gen_loader.dataset.mean_for_eval[None,None,:]
-    std_for_eval  = gen_loader.dataset.std_for_eval[None,None,:]
-    data = data * std + mean 
-    data = (data - mean_for_eval)/std_for_eval
+    # motion_gt =  torch.Size([32, 196, 263])
+    # NOTE: must use the `dataset` argument — referring to gen_loader only works
+    # when this module's __main__ created that global (breaks imports from *_mic.py).
+    mean = dataset.mean[None, None, :]
+    std = dataset.std[None, None, :]
+    mean_for_eval = dataset.mean_for_eval[None, None, :]
+    std_for_eval = dataset.std_for_eval[None, None, :]
+    data = data * std + mean
+    data = (data - mean_for_eval) / std_for_eval
     return data 
 
 

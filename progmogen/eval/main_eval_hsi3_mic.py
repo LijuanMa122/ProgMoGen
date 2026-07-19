@@ -1,0 +1,56 @@
+"""HSI-3 MIC metrics: Skating, Max Acc, C.Err, Unsucc.Rate (+ Pass stub)."""
+
+import argparse
+import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
+import numpy as np
+
+from metrics2 import get_jittor_stat, get_skate_stat, read_all_sample
+
+
+def get_parser():
+    p = argparse.ArgumentParser()
+    p.add_argument("--input_path", default="")
+    p.add_argument("--eps", type=float, default=0.05)
+    return p.parse_args()
+
+
+def read_loss(path):
+    loss = np.load(path, allow_pickle=True).item()["loss"].mean()
+    print(f"constraint_error = {loss:.5f}")
+    return loss
+
+
+def unsuccess_rate(path, eps=0.05):
+    samples, lengths = read_all_sample(path)
+    ok = []
+    for i, L in enumerate(lengths):
+        xyz = samples[i, :, :, : int(L)]
+        x, z = xyz[:, 0, :], xyz[:, 2, :]
+        ok.append(
+            (x.min() >= -1.0 - eps)
+            and (x.max() <= 1.0 + eps)
+            and (z.min() >= -1.0 - eps)
+            and (z.max() <= 1.0 + eps)
+        )
+    rate = 1.0 - float(np.mean(ok))
+    print(f"unsuccess_rate = {rate:.4f}")
+    return rate
+
+
+def main():
+    args = get_parser()
+    print("=" * 80)
+    print("->", args.input_path)
+    get_skate_stat(args.input_path)
+    get_jittor_stat(args.input_path, order=2, stat_type="max")
+    read_loss(args.input_path)
+    unsuccess_rate(args.input_path, eps=args.eps)
+    print("pass_rate = nan  # TODO: MuJoCo")
+
+
+if __name__ == "__main__":
+    main()
